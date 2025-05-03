@@ -25,7 +25,7 @@ export async function login(credentials: LoginCredentials): Promise<{ message: s
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
-      credentials: 'include',
+     // credentials: 'include',
     });
     return handleResponse<{ message: string }>(response);
   } catch (error) {
@@ -225,52 +225,34 @@ export async function testEmailConfig(config: Omit<EmailAccountFormData, 'emailA
 }
 
 // Queries API
-export async function getQueries(params: PaginationParams = {}): Promise<PaginatedResponse<Query>> {
-  try {
-    const queryParams = new URLSearchParams();
-    if (params.page) queryParams.append('page', params.page.toString());
-    if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.search) queryParams.append('search', params.search);
-    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
-    if (params.order) queryParams.append('order', params.order);
+export async function getQueries(
+  params: PaginationParams = {}
+): Promise<PaginatedResponse<Query>> {
+  const queryParams = new URLSearchParams();
 
-    const response = await fetch(`${API_BASE_URL}/queries-service/queries?${queryParams.toString()}`, {
-      credentials: 'include',
-    });
-    return handleResponse<PaginatedResponse<Query>>(response);
-  } catch (error) {
-    console.log('API getQueries failed, using mock response');
-    // Create mock queries
-    const mockQueries: Query[] = [
-      {
-        itemId: "1",
-        userId: "1",
-        requestText: "Looking for experts in AI to comment on recent developments in machine learning",
-        publicationName: "Tech Today",
-        platform: "Email",
-        deadline: "2025-05-15",
-        receivedDate: new Date().toISOString(),
-        queryWriterEmail: "editor@techtoday.com"
-      },
-      {
-        itemId: "2",
-        userId: "1",
-        requestText: "Seeking financial analysts to discuss market trends for Q2 2025",
-        publicationName: "Finance Weekly",
-        platform: "HARO",
-        deadline: "2025-05-10",
-        receivedDate: new Date(Date.now() - 86400000).toISOString(),
-        queryWriterEmail: "queries@financeweekly.com"
+  if (params.page)   queryParams.append('page',   params.page.toString());
+  if (params.limit)  queryParams.append('limit',  params.limit.toString());
+  if (params.search) queryParams.append('search', params.search);
+  if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+  if (params.order)  queryParams.append('order',  params.order);
+
+  // ——— New: serialize filters into the query string ———
+  if (params.filters) {
+    Object.entries(params.filters).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        value.forEach(v => queryParams.append(key, v));
+      } else {
+        queryParams.append(key, String(value));
       }
-    ];
-    
-    return createMockResponse({
-      items: mockQueries,
-      total: mockQueries.length,
-      page: params.page || 1,
-      limit: params.limit || 10
     });
   }
+
+  const response = await fetch(
+    `${API_BASE_URL}/queries-service/queries?${queryParams.toString()}`,
+    { credentials: 'include' }
+  );
+
+  return handleResponse<PaginatedResponse<Query>>(response);
 }
 
 // Email Service API
